@@ -26,9 +26,12 @@ REPLIES_COL = "replies_collection"
 BFS_QUEUE_COL = "bfs_queue_collection"
 
 # seed users to initiate scraping
-seed_usernames = ["P9Ashwini", 
+seed_usernames = ["saffrontrail", 
                   "drashwathcn", 
-                  "Tej_AnanthKumar"]
+                  "Tej_AnanthKumar",
+                  "KumaraswamyFrCM",
+                  "b50",
+                  "pvsubramanyam"]
 
 # Storing in MongoDB database
 client = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -60,7 +63,7 @@ def get_twitter_auth_api():
     return api
 
 # performing a bfs to obtain users for twitter behaviour analysis
-def twitter_bfs():
+def twitter_bfs(file_obj):
     api = get_twitter_auth_api()
 
     """ Saving the queue to deal with timeouts """
@@ -74,20 +77,61 @@ def twitter_bfs():
     """ Performing the bfs """
     while len(bfs_queue)!=0 and num_users<MAX_USERS:
         user_name = bfs_queue.pop()
-        twitter_user = api.get_user(user_name)
-        if check_optimal(twitter_user):
+        twitter_user = None
+
+        while True:
+            try: 
+                twitter_user = api.get_user(user_name)
+                break
+            except tweepy.TweepError:
+                print("Sleeping for 15 minutes...while fetching user details")
+                time.sleep(15*60)
+
+        if check_optimal(twitter_user) and users_col.find_one({"_id":twitter_user._json["id_str"]})==None:
             twitter_user_doc = get_user_doc(twitter_user)
             users_col.insert_one(twitter_user_doc)
             num_users = num_users+1
+            file_obj.write(twitter_user._json["screen_name"]+"\n")
 
+            """ Logging for every 100 users """
             if num_users%100 == 0:
                 print ("Number of users collected: ", num_users)
-                
+
             """ get the followers of current user """
+            while True:
+                try:
+                    for follower in twitter_user.followers():
+                        """ Check if the user has already been saved """
+                        if users_col.find_one({"_id": follower._json["id_str"]}) == None:
+                            bfs_queue.append(follower._json["screen_name"])
+                    break
+                except tweepy.TweepError:
+                    print("Sleeping for 15 minutes... while fetching followers")
+                    time.sleep(15*60)
 
 
+def main():
+    """ Clear out the tables and files when about to start """
+    users_col.drop()
+    bfs_queue_col.drop()
+    users_file = open("users.txt", "w")
+    users_file.write("")
+    users_file.close()
 
+    """ Store the bfs queue in case if restart needs """
+    for seed_user in seed_usernames:
+        user = {
+            "screen_name" : seed_user
+        }
+        bfs_queue_col.insert_one(user)
 
+    """ Save the screenames in the file as well """
+    users_file = open("users.txt", "a")
+    twitter_bfs(users_file)
+    users_file.close()
+
+if __name__ == "__main__":
+    main()
 
 
     
