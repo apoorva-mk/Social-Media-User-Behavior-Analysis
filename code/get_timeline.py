@@ -123,8 +123,13 @@ def main():
             try:
                 tweet["_id"] = tweet["id_str"]
                 tweets_col.insert_one(tweet)
-                text = tweet["text"].strip('\n')
-                twfile.write(str(tweet["id"])+","+str(tweet["created_at"])+","+text+","+str(tweet["user"]["id"])+"\n")
+                text = tweet["text"]
+                text = text.replace('\r',' ')
+                text = text.replace('\n',' ')
+                lang = "en"
+                if hasattr(tweet, "lang"):
+                    lang = tweet["lang"]
+                twfile.write(str(tweet["id"])+","+str(tweet["created_at"])+","+text+","+str(tweet["user"]["id"])+","+lang+"\n")
             except pymongo.errors.DuplicateKeyError:
                 print("Tweet already saved")
             
@@ -132,8 +137,13 @@ def main():
             try:
                 retweet["_id"] = retweet["id_str"]
                 retweets_col.insert_one(retweet)
-                text = tweet["text"].strip('\n')
-                rtfile.write(str(retweet["id"])+","+str(retweet["created_at"])+","+text+","+str(retweet["user"]["id"])+"\n")
+                text = retweet["text"]
+                text = text.replace('\r',' ')
+                text = text.replace('\n',' ')
+                lang = "en"
+                if hasattr(retweet, "lang"):
+                    lang = retweet["lang"]
+                rtfile.write(str(retweet["id"])+","+str(retweet["created_at"])+","+text+","+str(retweet["user"]["id"])+","+lang+"\n")
             except pymongo.errors.DuplicateKeyError:
                 print("Retweet already saved")
 
@@ -141,8 +151,13 @@ def main():
             try:
                 reply["_id"] = reply["id_str"]
                 replies_col.insert_one(reply)
-                text = tweet["text"].strip('\n')
-                repfile.write(str(reply["id"])+","+str(reply["created_at"])+","+text+","+str(reply["user"]["id"])+"\n")
+                text = reply["text"]
+                text = text.replace('\r',' ')
+                text = text.replace('\n',' ')
+                lang = "en"
+                if hasattr(reply, "lang"):
+                    lang = reply["lang"]
+                repfile.write(str(reply["id"])+","+str(reply["created_at"])+","+text+","+str(reply["user"]["id"])+","+lang+"\n")
             except pymongo.errors.DuplicateKeyError:
                 print("Reply already saved")
 
