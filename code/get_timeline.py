@@ -97,9 +97,18 @@ def main():
     retweets_col = mydb[RETWEETS_COL]
     replies_col = mydb[REPLIES_COL]
 
+    tweets_col.drop()
+    retweets_col.drop()
+    replies_col.drop()
+
     user_lines = ufile.readlines() 
     api = data_scraper.get_twitter_auth_api(KEY, SECRET_KEY)
+    user_num = 0
     for line in user_lines:
+        user_num = user_num+1
+        if user_num%50==0:
+            print("Saving statuses for user number: ", user_num)
+
         while True:
             try: 
                 twitter_user = api.get_user(line)
@@ -114,7 +123,8 @@ def main():
             try:
                 tweet["_id"] = tweet["id_str"]
                 tweets_col.insert_one(tweet)
-                twfile.write(tweet["id"]+","+tweet["created_at"]+","+tweet["text"]+","+tweet["user"]["id"])
+                text = tweet["text"].strip('\n')
+                twfile.write(str(tweet["id"])+","+str(tweet["created_at"])+","+text+","+str(tweet["user"]["id"])+"\n")
             except pymongo.errors.DuplicateKeyError:
                 print("Tweet already saved")
             
@@ -122,7 +132,8 @@ def main():
             try:
                 retweet["_id"] = retweet["id_str"]
                 retweets_col.insert_one(retweet)
-                rtfile.write(retweet["id"]+","+retweet["created_at"]+","+retweet["text"]+","+retweet["user"]["id"])
+                text = tweet["text"].strip('\n')
+                rtfile.write(str(retweet["id"])+","+str(retweet["created_at"])+","+text+","+str(retweet["user"]["id"])+"\n")
             except pymongo.errors.DuplicateKeyError:
                 print("Retweet already saved")
 
@@ -130,7 +141,8 @@ def main():
             try:
                 reply["_id"] = reply["id_str"]
                 replies_col.insert_one(reply)
-                repfile.write(reply["id"]+","+reply["created_at"]+","+reply["text"]+","+reply["user"]["id"])
+                text = tweet["text"].strip('\n')
+                repfile.write(str(reply["id"])+","+str(reply["created_at"])+","+text+","+str(reply["user"]["id"])+"\n")
             except pymongo.errors.DuplicateKeyError:
                 print("Reply already saved")
 
