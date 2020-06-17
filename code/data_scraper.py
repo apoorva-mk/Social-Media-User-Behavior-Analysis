@@ -57,14 +57,14 @@ def get_user_doc(twitter_user):
     return twitter_user_doc
 
 # get authenticated twitter api
-def get_twitter_auth_api():
-    auth = tweepy.OAuthHandler(KEY, SECRET_KEY)
+def get_twitter_auth_api(api_key, api_secret_key):
+    auth = tweepy.OAuthHandler(api_key, api_secret_key)
     api = tweepy.API(auth)
     return api
 
 # performing a bfs to obtain users for twitter behaviour analysis
 def twitter_bfs(file_obj):
-    api = get_twitter_auth_api()
+    api = get_twitter_auth_api(KEY, SECRET_KEY)
 
     """ Saving the queue to deal with timeouts """
     bfs_queue = []

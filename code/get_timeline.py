@@ -1,6 +1,12 @@
 import tweepy
+import pymongo
+import os
+import data_scraper
+import time
+
 from dateutil import parser
 
+# Some user related details
 FRIEND_COUNT = 5
 MIN_FOLLOWER_COUNT = 5
 MAX_FOLLOWER_COUNT = 100000
@@ -10,6 +16,18 @@ STATUSES_COUNT = 5
 START_DATE = 'Jan 1 0:0:0 +0000 2020'
 start_date = parser.parse(START_DATE)
 
+# mongo db collection names
+client = pymongo.MongoClient("mongodb://localhost:27017/")
+DATABASE = "twitter_database"
+TWEETS_COL = "tweets_collection"
+RETWEETS_COL = "retweets_collection"
+REPLIES_COL = "replies_collection"
+
+# store twitter API credentials
+KEY = os.getenv('key')
+SECRET_KEY = os.getenv('secret_key')
+ACCESS_TOKEN = os.getenv('access_token')
+ACCESS_TOKEN_SECRET = os.getenv('access_token_secret')
 
 def check_optimal(twitter_user):
     """ checking if the given user is suitable for obtaining tweets """
@@ -42,7 +60,7 @@ def user_timeline(api, twitter_user):
     replies = []
 
     if check_optimal(twitter_user): 
-        for status in tweepy.Cursor(api.user_timeline, id=twitter_user._json["id"]).items():
+        for status in tweepy.Cursor(api.user_timeline, id=twitter_user._json["id"], monitor_rate_limit=True, wait_on_rate_limit=True).items():
             tweet_date = parser.parse(status._json["created_at"])
 
             """ Only saving tweets upto a certain time """
@@ -52,7 +70,7 @@ def user_timeline(api, twitter_user):
             if status._json["in_reply_to_screen_name"] != None:
                 replies.append(status._json)
 
-            elif status._json["retweeted"]:
+            elif hasattr(status,"retweeted_status"):
                 retweets.append(status._json)
 
             else:
@@ -60,3 +78,61 @@ def user_timeline(api, twitter_user):
 
     return tweets, retweets, replies
 
+
+def main():
+    userfile = "users1.txt"
+    tweetfile = "tweets1.csv"
+    retweetfile = "retweets1.csv"
+    replyfile = "replies1.csv"
+
+    ufile = open(userfile, 'r')
+    twfile = open(tweetfile, "w")
+    rtfile = open(retweetfile, "w")
+    repfile = open(replyfile, "w")
+
+    # Storing in MongoDB database
+    client = pymongo.MongoClient("mongodb://localhost:27017/")
+    mydb = client[DATABASE]
+    tweets_col = mydb[TWEETS_COL]
+    retweets_col = mydb[RETWEETS_COL]
+    replies_col = mydb[REPLIES_COL]
+
+    user_lines = ufile.readlines() 
+    api = data_scraper.get_twitter_auth_api(KEY, SECRET_KEY)
+    for line in user_lines:
+        while True:
+            try: 
+                twitter_user = api.get_user(line)
+                break
+            except tweepy.TweepError:
+                print("Sleeping for 15 minutes...while fetching user details")
+                time.sleep(15*60)
+
+        tweets, retweets, replies = user_timeline(api, twitter_user)
+
+        for tweet in tweets:
+            try:
+                tweet["_id"] = tweet["id_str"]
+                tweets_col.insert_one(tweet)
+                twfile.write(tweet["id"]+","+tweet["created_at"]+","+tweet["text"]+","+tweet["user"]["id"])
+            except pymongo.errors.DuplicateKeyError:
+                print("Tweet already saved")
+            
+        for retweet in retweets:
+            try:
+                retweet["_id"] = retweet["id_str"]
+                retweets_col.insert_one(retweet)
+                rtfile.write(retweet["id"]+","+retweet["created_at"]+","+retweet["text"]+","+retweet["user"]["id"])
+            except pymongo.errors.DuplicateKeyError:
+                print("Retweet already saved")
+
+        for reply in replies:
+            try:
+                reply["_id"] = reply["id_str"]
+                replies_col.insert_one(reply)
+                repfile.write(reply["id"]+","+reply["created_at"]+","+reply["text"]+","+reply["user"]["id"])
+            except pymongo.errors.DuplicateKeyError:
+                print("Reply already saved")
+
+if __name__ == "__main__":
+    main()
