@@ -4,13 +4,3 @@ With the novel corona virus pandemic outbreak the Government of India imposed va
 
 src: https://en.wikipedia.org/wiki/COVID-19_pandemic_lockdown_in_India
 
-### Data collection
----
-A BFS was perfomed starting with a few micro-celerbrities as seed users to extract users in the Indian region. Outliers such as inactive users, protected accounts and verified accounts were ignored to avoid samples which have no significant changes in behavior. Morever to make the traversal sufficiently deep and extensive these users were avoided. 
-
-From the users gathered, the timeline of statuses were extracted until the beginning of the year 2020 for analysis purposes. 
-
-Statuses were grouped into tweets, retweets and replies for a more nuanced analysis
-
-Further top hastags were gathered and then the relevant tweets were extracted to perform a sentiment analysis.
-
